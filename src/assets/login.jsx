@@ -1,6 +1,6 @@
 import React from 'react'
 import './login.css'
-import logo from './react.svg'
+import logo from './agriconnect.svg'
 
 export default function Login() {
   return (
@@ -12,8 +12,6 @@ export default function Login() {
       </div>
 
       <div className="main">
-        <input className="input" type="email" placeholder="Email" />
-        <input className="input" type="password" placeholder="Password" />
         <button className="btn btn-primary">Sign in</button>
         <button className="btn btn-outline">Create account</button>
       </div>
