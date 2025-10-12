@@ -1,0 +1,282 @@
+.user-profile {
+  max-width: 100%;
+  margin: 0 auto;
+  background: #f6e9d6;
+  color: #2b2725;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.profile-header {
+  background: #a9492e;
+  padding: 16px 20px;
+  border-bottom-left-radius: 12px;
+  border-bottom-right-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.profile-header h1 {
+  color: #fff;
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.back-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #ffd9b3;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  color: #2b2725;
+  transition: all 0.2s ease;
+}
+
+.back-btn:hover {
+  background: #f4c395;
+  transform: scale(1.05);
+}
+
+.message-profile-btn {
+  padding: 8px 16px;
+  background: #ffd9b3;
+  color: #2b2725;
+  border: none;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.message-profile-btn:hover {
+  background: #f4c395;
+  transform: scale(1.05);
+}
+
+.profile-content {
+  flex: 1;
+  padding: 20px;
+}
+
+.profile-card {
+  background: #fff;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.profile-avatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: #a9492e;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 32px;
+  margin: 0 auto 16px;
+}
+
+.profile-info h2 {
+  margin: 0 0 8px 0;
+  font-size: 24px;
+  color: #2b2725;
+}
+
+.profile-email {
+  color: #666;
+  margin: 0 0 8px 0;
+  font-size: 14px;
+}
+
+.profile-location {
+  color: #666;
+  margin: 0 0 12px 0;
+  font-size: 14px;
+}
+
+.profile-rating {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.stars {
+  font-size: 16px;
+}
+
+.rating-text {
+  font-weight: 600;
+  color: #2b2725;
+}
+
+.profile-bio {
+  background: #fff;
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  margin-bottom: 20px;
+}
+
+.profile-bio h3 {
+  margin: 0 0 12px 0;
+  font-size: 18px;
+  color: #2b2725;
+}
+
+.profile-bio p {
+  margin: 0;
+  line-height: 1.6;
+  color: #666;
+}
+
+.profile-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.stat-card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 16px;
+  text-align: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.stat-number {
+  font-size: 20px;
+  font-weight: 700;
+  color: #a9492e;
+  margin-bottom: 4px;
+}
+
+.stat-label {
+  font-size: 12px;
+  color: #666;
+  font-weight: 600;
+}
+
+.profile-actions {
+  display: flex;
+  gap: 12px;
+  flex-direction: column;
+}
+
+.action-btn {
+  padding: 12px 24px;
+  border-radius: 24px;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.action-btn.primary {
+  background: #a9492e;
+  color: #fff;
+}
+
+.action-btn.primary:hover {
+  background: #8b3a25;
+  transform: translateY(-2px);
+}
+
+.action-btn.secondary {
+  background: #fff;
+  color: #a9492e;
+  border: 2px solid #a9492e;
+}
+
+.action-btn.secondary:hover {
+  background: #a9492e;
+  color: #fff;
+  transform: translateY(-2px);
+}
+
+.loading-state, .error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+  text-align: center;
+}
+
+.loading-spinner {
+  font-size: 32px;
+  animation: spin 1s linear infinite;
+  margin-bottom: 16px;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.retry-btn {
+  padding: 8px 16px;
+  background: #a9492e;
+  color: #fff;
+  border: none;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  margin-top: 12px;
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+  .profile-header {
+    padding: 12px 16px;
+  }
+  
+  .profile-header h1 {
+    font-size: 20px;
+  }
+  
+  .profile-content {
+    padding: 16px;
+  }
+  
+  .profile-card {
+    padding: 20px;
+  }
+  
+  .profile-avatar {
+    width: 60px;
+    height: 60px;
+    font-size: 24px;
+  }
+  
+  .profile-info h2 {
+    font-size: 20px;
+  }
+  
+  .profile-stats {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  
+  .action-btn {
+    padding: 14px 20px;
+    font-size: 14px;
+  }
+}
