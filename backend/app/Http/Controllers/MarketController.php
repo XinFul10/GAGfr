@@ -142,6 +142,8 @@ class MarketController extends Controller
                     'product_name' => $product->name,
                     'product_price' => $product->price,
                     'product_image' => $product->image,
+                    // Include a computed public URL for convenience on the client
+                    'product_image_url' => $product->image_url ?? null,
                     'buyer_name' => $product->buyer->name ?? 'Unknown Buyer',
                     'is_read' => false,
                 ]);

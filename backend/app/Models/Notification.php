@@ -17,6 +17,8 @@ class Notification extends Model
         'id', 'seller_id', 'buyer_id', 'product_id', 'product_name', 'product_price', 'product_image', 'buyer_name', 'is_read'
     ];
 
+    protected $appends = ['product_image_url'];
+
     protected static function boot()
     {
         parent::boot();
@@ -35,5 +37,18 @@ class Notification extends Model
     public function buyer()
     {
         return $this->belongsTo(User::class, 'buyer_id');
+    }
+
+    /**
+     * Accessor to expose a public URL for the stored product image.
+     */
+    public function getProductImageUrlAttribute(): ?string
+    {
+        if (empty($this->product_image)) {
+            return null;
+        }
+        // Ensure we expose a public URL pointing to the storage link (public/storage/...)
+        $path = 'storage/' . ltrim($this->product_image, '/');
+        return asset($path);
     }
 }

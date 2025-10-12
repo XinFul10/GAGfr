@@ -24,7 +24,9 @@ export default function Notifications({ user, onNavigateBack, onNavigateToProfil
               productId: n.product_id,
               productName: n.product_name,
               productPrice: n.product_price,
+              // Prefer a full URL if provided by the server, otherwise pass the storage path
               productImage: n.product_image,
+              productImageUrl: n.product_image_url || (n.product_image ? `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/storage/${n.product_image}`.replace('/api', '') : null),
               date: n.created_at,
               id: n.id,
               is_read: n.is_read
@@ -138,9 +140,9 @@ export default function Notifications({ user, onNavigateBack, onNavigateToProfil
           notes.map((n, i) => (
             <div className="note-item" key={n.id || i}>
               <div className="product-image">
-                {n.productImage ? (
+                {n.productImageUrl ? (
                   <img 
-                    src={`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/storage/${n.productImage}`.replace('/api', '')} 
+                    src={n.productImageUrl}
                     alt={n.productName}
                     onError={(e) => {
                       e.target.style.display = 'none'
@@ -148,7 +150,7 @@ export default function Notifications({ user, onNavigateBack, onNavigateToProfil
                     }}
                   />
                 ) : null}
-                <div className="placeholder-image" style={{ display: n.productImage ? 'none' : 'flex' }}>📦</div>
+                <div className="placeholder-image" style={{ display: n.productImageUrl ? 'none' : 'flex' }}>📦</div>
               </div>
               
               <div className="note-body">

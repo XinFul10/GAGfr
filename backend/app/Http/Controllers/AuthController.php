@@ -7,6 +7,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Config;
 
 class AuthController extends Controller
 {
@@ -27,10 +29,12 @@ class AuthController extends Controller
         }
 
         try {
+            // NOTE: User model casts the password as 'hashed' (see User::$casts),
+            // so we must NOT pre-hash here or Hash::check will fail later (double-hash).
             $user = User::create([
                 'name' => $request->name,
                 'email' => $request->email,
-                'password' => Hash::make($request->password),
+                'password' => $request->password,
                 'is_active' => false, // User needs to complete registration
             ]);
 
@@ -41,7 +45,10 @@ class AuthController extends Controller
                 'requires_completion' => true
             ])->header('Access-Control-Allow-Origin', '*');
         } catch (\Exception $e) {
-            return response()->json(['error' => 'Server error'], 500)->header('Access-Control-Allow-Origin', '*');
+            // Log full exception and return readable message in debug mode
+            Log::error('Signup error: ' . $e->getMessage(), ['exception' => $e]);
+            $message = Config::get('app.debug') ? $e->getMessage() : 'Server error';
+            return response()->json(['error' => $message], 500)->header('Access-Control-Allow-Origin', '*');
         }
     }
 
@@ -70,7 +77,14 @@ class AuthController extends Controller
             ], 403)->header('Access-Control-Allow-Origin', '*');
         }
 
-        $token = $user->createToken('auth-token')->plainTextToken;
+        try {
+            $token = $user->createToken('auth-token')->plainTextToken;
+        } catch (\Exception $e) {
+            // Token creation can fail if personal_access_tokens table is missing or DB errors occur
+            Log::error('Token creation failed: ' . $e->getMessage(), ['exception' => $e, 'user_id' => $user->id]);
+            $message = Config::get('app.debug') ? $e->getMessage() : 'Failed to generate token';
+            return response()->json(['error' => $message], 500)->header('Access-Control-Allow-Origin', '*');
+        }
 
         return response()->json([
             'token' => $token,
@@ -111,7 +125,9 @@ class AuthController extends Controller
                 'message' => 'Registration completed successfully! Please log in with your credentials.'
             ])->header('Access-Control-Allow-Origin', '*');
         } catch (\Exception $e) {
-            return response()->json(['error' => 'Server error'], 500)->header('Access-Control-Allow-Origin', '*');
+            Log::error('Complete registration error: ' . $e->getMessage(), ['exception' => $e]);
+            $message = Config::get('app.debug') ? $e->getMessage() : 'Server error';
+            return response()->json(['error' => $message], 500)->header('Access-Control-Allow-Origin', '*');
         }
     }
 
