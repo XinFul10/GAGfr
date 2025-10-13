@@ -7,6 +7,7 @@ import UserList from './assets/UserList.jsx'
 import UserProfile from './assets/UserProfile.jsx'
 import { clearSession, getUser } from './lib/api'
 import { Routes, Route, useNavigate, Navigate } from 'react-router-dom'
+import Cart from './assets/cart.jsx'
 import Calendar from './assets/calendar.jsx'
 
 function App() {
@@ -107,6 +108,10 @@ function App() {
             <Route
               path="/calendar"
               element={<Calendar user={user} />}
+            />
+            <Route
+              path="/cart"
+              element={<Cart />}
             />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react'
 import './market.css'
 import { apiRequest } from '../lib/api'
 import { addNotification } from '../lib/notifications'
+import { addToCart, getCartCount } from '../lib/cart'
+import { useNavigate } from 'react-router-dom'
 
 // Simple Error Boundary Component
 class ErrorBoundary extends React.Component {
@@ -49,6 +51,17 @@ export default function Market({ user, onNavigateBack }) {
   })
   const [imagePreview, setImagePreview] = useState(null)
   const [uploading, setUploading] = useState(false)
+  const [cartCount, setCartCount] = useState(getCartCount())
+  const navigate = useNavigate()
+
+  const handleOpenCart = () => {
+    // Ensure parent stops forcing the Market view so routes can render
+    if (typeof onNavigateBack === 'function') {
+      onNavigateBack()
+    }
+    // Navigate right after allowing routes to take control
+    setTimeout(() => navigate('/cart'), 0)
+  }
 
   useEffect(() => {
     loadProducts()
@@ -128,6 +141,11 @@ export default function Market({ user, onNavigateBack }) {
     }
   }
 
+  const handleAddToCart = (product) => {
+    addToCart(product, 1)
+    setCartCount(getCartCount())
+  }
+
   const handlePurchase = async (productId) => {
     if (!productId) {
       alert('Invalid product ID')
@@ -146,12 +164,29 @@ export default function Market({ user, onNavigateBack }) {
       try {
         console.log('Purchase response notification:', res.notification)
         if (res.notification && res.notification.seller_id === user.id) {
+          const getOrigin = () => {
+            try {
+              const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api'
+              const parsed = new URL(apiUrl)
+              return parsed.origin
+            } catch (e) {
+              return 'http://localhost:8000'
+            }
+          }
+          const origin = getOrigin()
+          const imageUrl = purchasedProduct?.image
+            ? `${origin}/public-storage/${String(purchasedProduct.image).replace(/^\/+/, '')}`
+            : (purchasedProduct?.image_url || null)
           addNotification({
             sellerId: res.notification.seller_id,
             buyerId: res.notification.buyer_id,
             buyerName: purchasedProduct.buyer?.name || user.name || 'A buyer',
             productId: purchasedProduct.id,
             productName: purchasedProduct.name,
+            productImage: purchasedProduct.image,
+            productImageUrl: imageUrl,
+            quantity: 1,
+            totalCost: Number(purchasedProduct.price || 0),
             id: res.notification.id,
             date: res.notification.created_at
           })
@@ -180,7 +215,9 @@ export default function Market({ user, onNavigateBack }) {
             <button className="back-btn" onClick={onNavigateBack}>←</button>
             <h1>Market Menu</h1>
             <div className="header-actions">
-              <button className="cart-btn">🛒</button>
+              <button className="cart-btn" onClick={handleOpenCart}>
+                🛒 {cartCount > 0 ? `(${cartCount})` : ''}
+              </button>
               <button className="filter-btn">🔽</button>
             </div>
           </div>
@@ -290,7 +327,8 @@ export default function Market({ user, onNavigateBack }) {
                 <ProductCard
                   key={product.id || `product-${index}`}
                   product={product}
-                  onPurchase={handlePurchase}
+                onPurchase={handlePurchase}
+                onAddToCart={handleAddToCart}
                   isOwner={product.seller_id === user.id}
                 />
               ))}
@@ -308,7 +346,7 @@ export default function Market({ user, onNavigateBack }) {
   )
 }
 
-function ProductCard({ product, onPurchase, isOwner }) {
+function ProductCard({ product, onPurchase, onAddToCart, isOwner }) {
   // Ensure we have valid product data
   if (!product) {
     return <div className="product-card">Loading...</div>
@@ -329,6 +367,20 @@ function ProductCard({ product, onPurchase, isOwner }) {
   // Safely get stock value
   const stock = typeof product.stock === 'number' ? product.stock : parseInt(product.stock) || 0
 
+  const getServerOrigin = () => {
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api'
+      const parsed = new URL(apiUrl)
+      return parsed.origin
+    } catch (e) {
+      return 'http://localhost:8000'
+    }
+  }
+
+  const resolvedImageSrc = product.image
+    ? `${getServerOrigin()}/public-storage/${product.image}`
+    : (product.image_url || null)
+
   return (
     <div className="product-card">
       <div className="product-header">
@@ -337,10 +389,11 @@ function ProductCard({ product, onPurchase, isOwner }) {
       </div>
       
       <div className="product-image">
-        {(product.image_url || product.image) ? (
+        {resolvedImageSrc ? (
           <img 
-            src={product.image_url || `${(import.meta.env.VITE_API_URL || 'http://localhost:8000/api').replace('/api', '')}/storage/${product.image}`}
+            src={resolvedImageSrc}
             alt={product.name || 'Product'} 
+            crossOrigin="anonymous"
             onError={(e) => {
               console.error('Image failed to load:', e.target.src)
               e.target.style.display = 'none'
@@ -348,19 +401,27 @@ function ProductCard({ product, onPurchase, isOwner }) {
             }}
           />
         ) : null}
-        <div className="placeholder-image" style={{ display: (product.image_url || product.image) ? 'none' : 'flex' }}>📦</div>
+        <div className="placeholder-image" style={{ display: resolvedImageSrc ? 'none' : 'flex' }}>📦</div>
       </div>
       
       <div className="product-footer">
         <div className="product-price">₱ {formatPrice(product.price)}</div>
         <div className="product-stock">Stock: {stock}</div>
         {!isOwner && stock > 0 ? (
-          <button 
-            className="add-to-cart-btn"
-            onClick={() => onPurchase(product.id)}
-          >
-            +
-          </button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button 
+              className="add-to-cart-btn"
+              onClick={() => onAddToCart(product)}
+            >
+              +
+            </button>
+            <button 
+              className="submit-btn"
+              onClick={() => onPurchase(product.id)}
+            >
+              Buy
+            </button>
+          </div>
         ) : (
           <div className="sold-out">Sold Out</div>
         )}

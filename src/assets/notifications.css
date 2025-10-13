@@ -23,14 +23,7 @@
   padding: 4px 8px;
   border-radius: 4px;
 }
-.test-btn {
-  background: #a9492e;
-  color: white;
-  font-size: 12px;
-}
-.test-btn:hover {
-  background: #8b3a25;
-}
+/* test button removed */
 .notes-list { display:flex; flex-direction:column; gap:16px }
 .note-item {
   /* Use grid to keep layout consistent and prevent overlapping */

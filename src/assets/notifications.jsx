@@ -6,6 +6,60 @@ import { apiRequest } from '../lib/api'
 export default function Notifications({ user, onNavigateBack, onNavigateToProfile, onStartChat }) {
   const [notes, setNotes] = useState([])
 
+  const getOrigin = () => (import.meta.env.VITE_API_URL || 'http://localhost:8000/api').replace('/api','')
+
+  const buildImageUrl = (pathOrUrl) => {
+    if (!pathOrUrl) return null
+    try {
+      const u = new URL(pathOrUrl)
+      return u.href
+    } catch (e) {
+      const origin = getOrigin()
+      const str = String(pathOrUrl)
+      // Already a root-relative path
+      if (str.startsWith('/')) {
+        return `${origin}${str}`
+      }
+      // Common storage path variants from backend
+      if (str.includes('public-storage')) {
+        return `${origin}/${str.replace(/^\/+/, '')}`
+      }
+      if (str.includes('public/storage')) {
+        return `${origin}/${str.replace(/^\/+/, '')}`
+      }
+      if (str.includes('/storage') || str.startsWith('storage/')) {
+        return `${origin}/${str.replace(/^\/+/, '')}`
+      }
+      // Fallback: use same public-storage path used by Market cards
+      return `${origin}/public-storage/${str.replace(/^\/+/, '')}`
+    }
+  }
+
+  function aggregateNotifications(items) {
+    const map = new Map()
+    for (const n of items) {
+      if (!n) continue
+      const key = `${n.sellerId || ''}|${n.buyerId || ''}|${n.productId || ''}`
+      const existing = map.get(key)
+      if (!existing) {
+        map.set(key, { ...n, quantity: Number(n.quantity || 1), totalCost: Number(n.totalCost != null ? n.totalCost : (Number(n.productPrice || 0) * Number(n.quantity || 1))) })
+      } else {
+        const addedQty = Number(n.quantity || 1)
+        existing.quantity += addedQty
+        const addedTotal = Number(n.totalCost != null ? n.totalCost : (Number(n.productPrice || 0) * addedQty))
+        existing.totalCost = Number(existing.totalCost || 0) + addedTotal
+        if (n.date && (!existing.date || new Date(n.date) > new Date(existing.date))) {
+          existing.date = n.date
+          existing.id = n.id
+        }
+        if (!existing.productImageUrl && (n.productImageUrl || n.productImage)) {
+          existing.productImageUrl = n.productImageUrl || buildImageUrl(n.productImage)
+        }
+      }
+    }
+    return Array.from(map.values()).sort((a,b) => new Date(b.date) - new Date(a.date))
+  }
+
   useEffect(() => {
     // Try fetching server-side notifications if signed in; otherwise use localStorage
     async function load() {
@@ -17,6 +71,7 @@ export default function Notifications({ user, onNavigateBack, onNavigateToProfil
           if (res && Array.isArray(res.notifications)) {
             console.log('Found notifications:', res.notifications.length)
             // Normalize to the client shape with enhanced data
+            const origin = getOrigin()
             const normalized = res.notifications.map(n => ({
               sellerId: n.seller_id,
               buyerId: n.buyer_id,
@@ -24,15 +79,20 @@ export default function Notifications({ user, onNavigateBack, onNavigateToProfil
               productId: n.product_id,
               productName: n.product_name,
               productPrice: n.product_price,
+              quantity: n.quantity || 1,
+              totalCost: n.total_cost || ((parseFloat(n.product_price || 0) || 0) * (n.quantity || 1)),
               // Prefer a full URL if provided by the server, otherwise pass the storage path
               productImage: n.product_image,
-              productImageUrl: n.product_image_url || (n.product_image ? `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/storage/${n.product_image}`.replace('/api', '') : null),
+              productImageUrl: n.product_image_url || (n.product_image ? `${origin}/public-storage/${String(n.product_image).replace(/^\/+/,'')}` : null),
               date: n.created_at,
               id: n.id,
               is_read: n.is_read
             }))
-            console.log('Normalized notifications:', normalized)
-            setNotes(normalized)
+            const aggregated = aggregateNotifications(normalized)
+            console.log('Normalized+aggregated notifications:', aggregated)
+            setNotes(aggregated)
+            // Attempt to backfill missing images from product endpoint
+            backfillMissingImages(aggregated)
             return
           }
         } catch (e) {
@@ -43,8 +103,17 @@ export default function Notifications({ user, onNavigateBack, onNavigateToProfil
 
       const all = getNotifications()
       const filtered = (user && user.id) ? all.filter(n => n.sellerId === user.id) : []
-      console.log('Local notifications:', filtered)
-      setNotes(filtered)
+      const origin = getOrigin()
+      const normalizedLocal = filtered.map(n => ({
+        ...n,
+        productImageUrl: n.productImageUrl || (n.productImage ? `${origin}/public-storage/${String(n.productImage).replace(/^\/+/,'')}` : null),
+        quantity: Number(n.quantity || 1),
+        totalCost: Number(n.totalCost != null ? n.totalCost : (Number(n.productPrice || 0) * Number(n.quantity || 1)))
+      }))
+      const aggregated = aggregateNotifications(normalizedLocal)
+      console.log('Local notifications aggregated:', aggregated)
+      setNotes(aggregated)
+      backfillMissingImages(aggregated)
     }
 
     load()
@@ -55,37 +124,31 @@ export default function Notifications({ user, onNavigateBack, onNavigateToProfil
     return () => clearInterval(interval)
   }, [user])
 
-  const handleTestNotification = async () => {
+  async function backfillMissingImages(currentNotes) {
+    const missing = currentNotes.filter(n => !n.productImageUrl && n.productId)
+    if (missing.length === 0) return
+    const uniqueIds = Array.from(new Set(missing.map(n => n.productId)))
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/test/notification`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          seller_id: user.id,
-          buyer_id: 'test-buyer-' + Date.now(),
-          product_name: 'Test Product',
-          product_price: 100.00,
-          buyer_name: 'Test Buyer'
-        })
-      })
-      
-      if (response.ok) {
-        const data = await response.json()
-        console.log('Test notification created:', data)
-        alert('Test notification created! Check the notifications.')
-        // Reload notifications
-        window.location.reload()
-      } else {
-        console.error('Failed to create test notification')
-        alert('Failed to create test notification')
-      }
-    } catch (error) {
-      console.error('Error creating test notification:', error)
-      alert('Error creating test notification')
-    }
+      const origin = getOrigin()
+      const results = await Promise.all(uniqueIds.map(async (id) => {
+        try {
+          const res = await apiRequest(`/market/products/${id}`)
+          const p = res.product || res || {}
+          const img = p.image || p.product_image || p.image_path || null
+          const url = img ? (img.startsWith('http') ? img : `${origin}/public-storage/${String(img).replace(/^\/+/, '')}`) : null
+          return [id, url]
+        } catch {
+          return [id, null]
+        }
+      }))
+      const idToUrl = Object.fromEntries(results)
+      setNotes(prev => prev.map(n => (
+        (!n.productImageUrl && idToUrl[n.productId]) ? { ...n, productImageUrl: idToUrl[n.productId] } : n
+      )))
+    } catch {}
   }
+
+  //
 
   const handleClear = async () => {
     if (!window.confirm('Clear all notifications?')) return
@@ -128,7 +191,6 @@ export default function Notifications({ user, onNavigateBack, onNavigateToProfil
         <button className="back-btn" onClick={onNavigateBack}>←</button>
         <h2>Purchase Notifications</h2>
         <div className="header-actions">
-          <button className="test-btn" onClick={handleTestNotification}>Test</button>
           <button className="clear-btn" onClick={handleClear}>Clear all</button>
         </div>
       </div>
@@ -144,6 +206,8 @@ export default function Notifications({ user, onNavigateBack, onNavigateToProfil
                   <img 
                     src={n.productImageUrl}
                     alt={n.productName}
+                    crossOrigin="anonymous"
+                    referrerPolicy="no-referrer"
                     onError={(e) => {
                       e.target.style.display = 'none'
                       e.target.nextSibling.style.display = 'flex'
@@ -158,9 +222,15 @@ export default function Notifications({ user, onNavigateBack, onNavigateToProfil
                   <span className="buyer-name">{n.buyerName || 'Unknown Buyer'}</span> purchased your item
                 </div>
                 <div className="note-sub">{n.productName || 'an item'}</div>
-                {n.productPrice && (
-                  <div className="note-price">₱{parseFloat(n.productPrice).toFixed(2)}</div>
-                )}
+                <div className="note-meta">
+                  Qty: {Number(n.quantity || 1)}
+                </div>
+                <div className="note-price">
+                  Item: ₱{parseFloat(n.productPrice || 0).toFixed(2)}
+                </div>
+                <div className="note-price">
+                  Total: ₱{parseFloat(n.totalCost != null ? n.totalCost : (Number(n.productPrice || 0) * Number(n.quantity || 1))).toFixed(2)}
+                </div>
                 <div className="note-meta">{new Date(n.date).toLocaleString()}</div>
               </div>
               
