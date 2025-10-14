@@ -4,6 +4,7 @@ import { getCart, updateQuantity, removeFromCart, getTotals, clearCart } from '.
 import { apiRequest, getUser } from '../lib/api'
 import { addNotification } from '../lib/notifications'
 import { useNavigate } from 'react-router-dom'
+import { resolveProductImage } from '../lib/images'
 
 export default function Cart() {
   const [cart, setCart] = useState(getCart())
@@ -82,7 +83,7 @@ export default function Cart() {
           productName: product.name,
           productPrice: product.price,
           productImage: product.image,
-          productImageUrl: product.image ? `${(import.meta.env.VITE_API_URL || 'http://localhost:8000/api').replace('/api','')}/public-storage/${product.image}` : (product.image_url || null),
+          productImageUrl: resolveProductImage(product),
           quantity,
           totalCost: Number(product.price || 0) * Number(quantity || 1)
         })

@@ -3,6 +3,7 @@ import './market.css'
 import { apiRequest } from '../lib/api'
 import { addNotification } from '../lib/notifications'
 import { addToCart, getCartCount } from '../lib/cart'
+import { resolveProductImage, buildImageUrl, getOrigin } from '../lib/images'
 import { useNavigate } from 'react-router-dom'
 
 // Simple Error Boundary Component
@@ -71,6 +72,10 @@ export default function Market({ user, onNavigateBack }) {
     try {
       setLoading(true)
       const data = await apiRequest('/market/products')
+      console.log('Market.getProducts response:', data)
+      if (Array.isArray(data.products) && data.products.length > 0) {
+        console.log('First product sample:', data.products[0])
+      }
       setProducts(Array.isArray(data.products) ? data.products : [])
     } catch (error) {
       console.error('Error loading products:', error)
@@ -135,7 +140,12 @@ export default function Market({ user, onNavigateBack }) {
       alert('Product added successfully!')
     } catch (error) {
       console.error('Error adding product:', error)
-      alert('Failed to add product')
+      const details = error?.data?.details || error?.data || error?.message || 'Failed to add product'
+      if (typeof details === 'object') {
+        alert('Failed to add product: ' + JSON.stringify(details))
+      } else {
+        alert('Failed to add product: ' + String(details))
+      }
     } finally {
       setUploading(false)
     }
@@ -173,10 +183,7 @@ export default function Market({ user, onNavigateBack }) {
               return 'http://localhost:8000'
             }
           }
-          const origin = getOrigin()
-          const imageUrl = purchasedProduct?.image
-            ? `${origin}/public-storage/${String(purchasedProduct.image).replace(/^\/+/, '')}`
-            : (purchasedProduct?.image_url || null)
+          const imageUrl = resolveProductImage(purchasedProduct)
           addNotification({
             sellerId: res.notification.seller_id,
             buyerId: res.notification.buyer_id,
@@ -377,9 +384,7 @@ function ProductCard({ product, onPurchase, onAddToCart, isOwner }) {
     }
   }
 
-  const resolvedImageSrc = product.image
-    ? `${getServerOrigin()}/public-storage/${product.image}`
-    : (product.image_url || null)
+  const resolvedImageSrc = resolveProductImage(product)
 
   return (
     <div className="product-card">
@@ -393,11 +398,22 @@ function ProductCard({ product, onPurchase, onAddToCart, isOwner }) {
           <img 
             src={resolvedImageSrc}
             alt={product.name || 'Product'} 
-            crossOrigin="anonymous"
             onError={(e) => {
-              console.error('Image failed to load:', e.target.src)
+              try {
+                console.warn('Image failed to load, attempting storage fallback:', e.target.src)
+                // Try a storage fallback if the original was not a storage URL
+                const origin = getServerOrigin()
+                const tryUrl = product.image ? `${origin}/storage/${String(product.image).replace(/^\/+/, '')}` : null
+                if (tryUrl && tryUrl !== e.target.src) {
+                  e.target.onerror = null
+                  e.target.src = tryUrl
+                  return
+                }
+              } catch (err) {
+                // ignore
+              }
               e.target.style.display = 'none'
-              e.target.nextSibling.style.display = 'flex'
+              if (e.target.nextSibling) e.target.nextSibling.style.display = 'flex'
             }}
           />
         ) : null}

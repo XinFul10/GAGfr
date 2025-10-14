@@ -2,38 +2,12 @@ import React, { useEffect, useState } from 'react'
 import './notifications.css'
 import { getNotifications, clearNotifications, removeNotificationForSeller } from '../lib/notifications'
 import { apiRequest } from '../lib/api'
+import { buildImageUrl, resolveProductImage } from '../lib/images'
 
 export default function Notifications({ user, onNavigateBack, onNavigateToProfile, onStartChat }) {
   const [notes, setNotes] = useState([])
 
   const getOrigin = () => (import.meta.env.VITE_API_URL || 'http://localhost:8000/api').replace('/api','')
-
-  const buildImageUrl = (pathOrUrl) => {
-    if (!pathOrUrl) return null
-    try {
-      const u = new URL(pathOrUrl)
-      return u.href
-    } catch (e) {
-      const origin = getOrigin()
-      const str = String(pathOrUrl)
-      // Already a root-relative path
-      if (str.startsWith('/')) {
-        return `${origin}${str}`
-      }
-      // Common storage path variants from backend
-      if (str.includes('public-storage')) {
-        return `${origin}/${str.replace(/^\/+/, '')}`
-      }
-      if (str.includes('public/storage')) {
-        return `${origin}/${str.replace(/^\/+/, '')}`
-      }
-      if (str.includes('/storage') || str.startsWith('storage/')) {
-        return `${origin}/${str.replace(/^\/+/, '')}`
-      }
-      // Fallback: use same public-storage path used by Market cards
-      return `${origin}/public-storage/${str.replace(/^\/+/, '')}`
-    }
-  }
 
   function aggregateNotifications(items) {
     const map = new Map()
@@ -83,7 +57,7 @@ export default function Notifications({ user, onNavigateBack, onNavigateToProfil
               totalCost: n.total_cost || ((parseFloat(n.product_price || 0) || 0) * (n.quantity || 1)),
               // Prefer a full URL if provided by the server, otherwise pass the storage path
               productImage: n.product_image,
-              productImageUrl: n.product_image_url || (n.product_image ? `${origin}/public-storage/${String(n.product_image).replace(/^\/+/,'')}` : null),
+              productImageUrl: n.product_image_url || (n.product_image ? buildImageUrl(n.product_image) : null),
               date: n.created_at,
               id: n.id,
               is_read: n.is_read
@@ -91,6 +65,7 @@ export default function Notifications({ user, onNavigateBack, onNavigateToProfil
             const aggregated = aggregateNotifications(normalized)
             console.log('Normalized+aggregated notifications:', aggregated)
             setNotes(aggregated)
+              if (aggregated.length > 0) console.log('Notification sample:', aggregated[0])
             // Attempt to backfill missing images from product endpoint
             backfillMissingImages(aggregated)
             return
@@ -106,7 +81,7 @@ export default function Notifications({ user, onNavigateBack, onNavigateToProfil
       const origin = getOrigin()
       const normalizedLocal = filtered.map(n => ({
         ...n,
-        productImageUrl: n.productImageUrl || (n.productImage ? `${origin}/public-storage/${String(n.productImage).replace(/^\/+/,'')}` : null),
+        productImageUrl: n.productImageUrl || (n.productImage ? buildImageUrl(n.productImage) : null),
         quantity: Number(n.quantity || 1),
         totalCost: Number(n.totalCost != null ? n.totalCost : (Number(n.productPrice || 0) * Number(n.quantity || 1)))
       }))
@@ -135,7 +110,7 @@ export default function Notifications({ user, onNavigateBack, onNavigateToProfil
           const res = await apiRequest(`/market/products/${id}`)
           const p = res.product || res || {}
           const img = p.image || p.product_image || p.image_path || null
-          const url = img ? (img.startsWith('http') ? img : `${origin}/public-storage/${String(img).replace(/^\/+/, '')}`) : null
+          const url = img ? (img.startsWith('http') ? img : buildImageUrl(img)) : null
           return [id, url]
         } catch {
           return [id, null]
@@ -208,10 +183,19 @@ export default function Notifications({ user, onNavigateBack, onNavigateToProfil
                     alt={n.productName}
                     crossOrigin="anonymous"
                     referrerPolicy="no-referrer"
-                    onError={(e) => {
-                      e.target.style.display = 'none'
-                      e.target.nextSibling.style.display = 'flex'
-                    }}
+                      onError={(e) => {
+                        try {
+                          const origin = (import.meta.env.VITE_API_URL || 'http://localhost:8000/api').replace('/api','')
+                          const tryUrl = n.productImage || n.productImageUrl ? (n.productImage ? `${origin}/storage/${String(n.productImage).replace(/^\/+/, '')}` : null) : null
+                          if (tryUrl && tryUrl !== e.target.src) {
+                            e.target.onerror = null
+                            e.target.src = tryUrl
+                            return
+                          }
+                        } catch (err) {}
+                        e.target.style.display = 'none'
+                        if (e.target.nextSibling) e.target.nextSibling.style.display = 'flex'
+                      }}
                   />
                 ) : null}
                 <div className="placeholder-image" style={{ display: n.productImageUrl ? 'none' : 'flex' }}>📦</div>
