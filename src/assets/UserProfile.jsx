@@ -29,7 +29,8 @@ export default function UserProfile({ userId, onNavigateBack, onStartChat }) {
           rating: data.user.rating || 0,
           bio: data.user.bio || 'No bio available',
           location: data.user.location || 'Location not specified',
-          avatar: data.user.name.charAt(0).toUpperCase()
+          avatar: data.user.avatar_url || null,
+          avatarLetter: data.user.name.charAt(0).toUpperCase()
         })
       } else {
         throw new Error('User not found')
@@ -91,7 +92,11 @@ export default function UserProfile({ userId, onNavigateBack, onStartChat }) {
       <div className="profile-content">
         <div className="profile-card">
           <div className="profile-avatar">
-            {user.avatar}
+            {user.avatar ? (
+              <img src={user.avatar} alt={user.name} className="avatar-image" />
+            ) : (
+              user.avatarLetter
+            )}
           </div>
           <div className="profile-info">
             <h2>{user.name}</h2>

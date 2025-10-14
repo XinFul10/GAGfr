@@ -3,7 +3,7 @@ import './dashboard.css'
 import './notification-badge.css'
 import { useNavigate } from 'react-router-dom'
 
-export default function Dashboard({ user, onLogout, onNavigateToMarket, onNavigateToNotifications, onNavigateToUserList }) {
+export default function Dashboard({ user, onLogout, onNavigateToMarket, onNavigateToNotifications, onNavigateToUserList, onNavigateToMyProfile }) {
   const navigate = useNavigate()
   const goCalendar = () => navigate('/calendar')
   const [showMessagePanel, setShowMessagePanel] = useState(false)
@@ -318,7 +318,7 @@ export default function Dashboard({ user, onLogout, onNavigateToMarket, onNaviga
         <div className="tabs">
           <div className="tab"><div className="ico">🏠</div>Home</div>
           <div className="tab"><div className="ico">🔎</div>Search</div>
-          <div className="tab"><div className="ico">👤</div>Profile</div>
+          <div className="tab" onClick={onNavigateToMyProfile}><div className="ico">👤</div>Profile</div>
         </div>
       </nav>
     </div>

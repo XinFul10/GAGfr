@@ -5,6 +5,7 @@ import Notifications from './assets/notifications.jsx'
 import Market from './assets/market.jsx'
 import UserList from './assets/UserList.jsx'
 import UserProfile from './assets/UserProfile.jsx'
+import MyProfile from './assets/MyProfile.jsx'
 import { clearSession, getUser } from './lib/api'
 import { Routes, Route, useNavigate, Navigate } from 'react-router-dom'
 import Cart from './assets/cart.jsx'
@@ -52,6 +53,10 @@ function App() {
     setCurrentPage('userlist')
   }
 
+  function handleNavigateToMyProfile() {
+    setCurrentPage('myprofile')
+  }
+
   function handleNavigateBack() {
     setCurrentPage('dashboard')
     setSelectedUserId(null)
@@ -91,6 +96,8 @@ function App() {
             onNavigateBack={handleNavigateBack}
             onStartChat={handleStartChat}
           />
+        ) : currentPage === 'myprofile' ? (
+          <MyProfile onNavigateBack={handleNavigateBack} />
         ) : (
           <Routes>
             <Route
@@ -102,6 +109,7 @@ function App() {
                   onNavigateToMarket={handleNavigateToMarket}
                   onNavigateToNotifications={handleNavigateToNotifications}
                   onNavigateToUserList={handleNavigateToUserList}
+                  onNavigateToMyProfile={handleNavigateToMyProfile}
                 />
               )}
             />

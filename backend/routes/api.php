@@ -26,6 +26,8 @@ Route::post('/auth/login', [AuthController::class, 'login']);
 Route::post('/auth/complete-registration', [AuthController::class, 'completeRegistration']);
 Route::get('/auth/users', [AuthController::class, 'getAllUsers']);
 Route::get('/users/{userId}', [AuthController::class, 'getUserProfile']);
+Route::put('/users/{userId}', [AuthController::class, 'updateProfile']);
+Route::post('/users/{userId}', [AuthController::class, 'updateProfile']); // Alternative for form-data
 
 // Test route to create a notification (for debugging)
 Route::post('/test/notification', function(Request $request) {

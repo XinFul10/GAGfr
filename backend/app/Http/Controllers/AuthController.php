@@ -164,7 +164,8 @@ class AuthController extends Controller
                     'total_sales' => $user->products()->where('is_sold', true)->count(),
                     'rating' => 4.5, // Default rating, can be calculated from reviews
                     'bio' => $user->bio ?? 'No bio available',
-                    'location' => $user->location ?? 'Location not specified'
+                    'location' => $user->location ?? 'Location not specified',
+                    'avatar_url' => $user->avatar_url
                 ]
             ])->header('Access-Control-Allow-Origin', '*');
         } catch (\Exception $e) {
@@ -181,5 +182,91 @@ class AuthController extends Controller
                 'email' => $request->user()->email,
             ]
         ]);
+    }
+
+    public function updateProfile(Request $request, $userId)
+    {
+        try {
+            $user = User::find($userId);
+            if (!$user) {
+                return response()->json(['error' => 'User not found'], 404)->header('Access-Control-Allow-Origin', '*');
+            }
+
+            $validator = Validator::make($request->all(), [
+                'name' => 'sometimes|string|max:120',
+                'location' => 'sometimes|string|max:255',
+                'bio' => 'sometimes|string|max:1000',
+                'avatar' => 'sometimes|image|mimes:jpeg,png,jpg,gif,webp|max:5120', // 5MB max
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'error' => 'Validation failed',
+                    'details' => $validator->errors()
+                ], 400)->header('Access-Control-Allow-Origin', '*');
+            }
+
+            // Update basic fields
+            if ($request->has('name')) {
+                $user->name = $request->name;
+            }
+            if ($request->has('location')) {
+                $user->location = $request->location;
+            }
+            if ($request->has('bio')) {
+                $user->bio = $request->bio;
+            }
+
+            // Handle avatar upload
+            if ($request->hasFile('avatar')) {
+                $avatar = $request->file('avatar');
+                
+                // Create uploads directory if it doesn't exist
+                $uploadPath = public_path('uploads/avatars');
+                if (!file_exists($uploadPath)) {
+                    mkdir($uploadPath, 0755, true);
+                }
+
+                // Generate unique filename
+                $filename = $userId . '_' . time() . '.' . $avatar->getClientOriginalExtension();
+                
+                // Move file to public directory
+                $avatar->move($uploadPath, $filename);
+                
+                // Delete old avatar if exists
+                if ($user->avatar_url) {
+                    $oldAvatarPath = public_path('uploads/avatars/' . basename($user->avatar_url));
+                    if (file_exists($oldAvatarPath)) {
+                        unlink($oldAvatarPath);
+                    }
+                }
+                
+                // Store relative URL
+                $user->avatar_url = url('uploads/avatars/' . $filename);
+            }
+
+            $user->save();
+
+            return response()->json([
+                'message' => 'Profile updated successfully',
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'bio' => $user->bio,
+                    'location' => $user->location,
+                    'avatar_url' => $user->avatar_url,
+                    'created_at' => $user->created_at,
+                    'total_products' => $user->products()->count(),
+                    'total_sales' => $user->products()->where('is_sold', true)->count(),
+                    'rating' => 4.5,
+                ]
+            ])->header('Access-Control-Allow-Origin', '*');
+
+        } catch (\Exception $e) {
+            Log::error('Update profile error: ' . $e->getMessage(), ['exception' => $e]);
+            $message = Config::get('app.debug') ? $e->getMessage() : 'Failed to update profile';
+            return response()->json(['error' => $message], 500)->header('Access-Control-Allow-Origin', '*');
+        }
     }
 }

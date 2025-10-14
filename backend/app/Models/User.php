@@ -27,6 +27,7 @@ class User extends Authenticatable
         'is_active',
         'bio',
         'location',
+        'avatar_url',
     ];
 
     /**
