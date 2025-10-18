@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "ensure-storage-link": "node ./scripts/ensureStorageLink.js",
     "server": "cd backend && php artisan serve --port=8000",
     "dev:all": "cross-env VITE_API_URL=http://localhost:8000/api concurrently \"npm run server\" \"npm run dev\"",
     "build": "vite build",

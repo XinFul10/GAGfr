@@ -395,23 +395,49 @@ function ProductCard({ product, onPurchase, onAddToCart, isOwner }) {
       
       <div className="product-image">
         {resolvedImageSrc ? (
-          <img 
+          <img
             src={resolvedImageSrc}
-            alt={product.name || 'Product'} 
+            alt={product.name || 'Product'}
             onError={(e) => {
               try {
-                console.warn('Image failed to load, attempting storage fallback:', e.target.src)
-                // Try a storage fallback if the original was not a storage URL
+                const img = e.target
+                // Prevent infinite retry loops by tracking if we've already tried the storage fallback
+                if (img.dataset.fallbackTried === 'true') {
+                  // fallback already tried and failed -> hide image and show placeholder
+                  img.style.display = 'none'
+                  if (img.nextSibling) img.nextSibling.style.display = 'flex'
+                  return
+                }
+
+                console.warn('Image failed to load, attempting storage fallback:', img.src)
+
+                // Build a storage fallback URL in a safe way
                 const origin = getServerOrigin()
-                const tryUrl = product.image ? `${origin}/storage/${String(product.image).replace(/^\/+/, '')}` : null
-                if (tryUrl && tryUrl !== e.target.src) {
-                  e.target.onerror = null
-                  e.target.src = tryUrl
+                const imagePath = product.image || product.productImage || product.product_image || ''
+                if (!imagePath) throw new Error('no image path to build fallback')
+
+                // Use buildImageUrl when available, but ensure we end up with an absolute URL
+                let tryUrl = null
+                try {
+                  const built = buildImageUrl(imagePath)
+                  if (built) {
+                    // If buildImageUrl returned a relative path, prefix origin
+                    tryUrl = built.startsWith('http') ? built : `${origin}${built.startsWith('/') ? '' : '/'}${built}`
+                  }
+                } catch (inner) {
+                  // fallback to manual construction
+                  tryUrl = `${origin}/storage/${String(imagePath).replace(/^\/+/, '')}`
+                }
+
+                if (tryUrl && tryUrl !== img.src) {
+                  img.dataset.fallbackTried = 'true'
+                  img.src = tryUrl
                   return
                 }
               } catch (err) {
-                // ignore
+                // ignore and fall through to placeholder display
               }
+
               e.target.style.display = 'none'
               if (e.target.nextSibling) e.target.nextSibling.style.display = 'flex'
             }}
